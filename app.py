@@ -1,3 +1,9 @@
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(override=True)
+
 import streamlit as st
 import pandas as pd
 from utils import extract_text_from_pdf
@@ -15,11 +21,28 @@ with st.sidebar:
     mode = st.radio("Select Mode", ["Interactive Interview", "Bulk Screening"])
     
     # API Key
-    # Try to load from secrets, but allow manual override
-    default_api_key = st.secrets.get("OPENAI_API_KEY", "")
+    # Try to load from .env, then secrets, but allow manual override
+    env_key = os.getenv("OPENAI_API_KEY", "")
+    secrets_key = st.secrets.get("OPENAI_API_KEY", "")
+    
+    source = "Manual"
+    default_api_key = ""
+    
+    if env_key:
+        default_api_key = env_key
+        source = "Environment (.env)"
+    elif secrets_key:
+        default_api_key = secrets_key
+        source = "Secrets (secrets.toml)"
+        
     api_key = st.text_input("OpenAI API Key", value=default_api_key, type="password")
 
-    if not api_key:
+    if api_key:
+        if api_key == default_api_key:
+            st.caption(f"✅ Key loaded from {source}")
+        else:
+            st.caption("✏️ Key manually entered")
+    else:
         st.warning("Please enter your OpenAI API Key to proceed.")
     
     job_description = st.text_area("Job Description", height=200, placeholder="Paste the JD here...")
