@@ -93,3 +93,56 @@ class InterviewAgent:
         })
         
         return report
+
+    def evaluate_candidate(self, resume_text, job_description):
+        """
+        Evaluates a single candidate without an interactive interview.
+        Returns a JSON-compatible dictionary.
+        """
+        system_prompt = """You are an expert Technical Recruiter.
+        Evaluate the candidate's resume against the Job Description.
+        
+        Resume:
+        {resume_text}
+        
+        Job Description:
+        {job_description}
+        
+        Return a JSON object with the following fields:
+        - name: Candidate's name (extract from resume)
+        - score: Integer (0-100) representing fit
+        - summary: 2-sentence summary of the candidate
+        - strengths: List of strings
+        - weaknesses: List of strings
+        
+        Ensure the output is valid JSON. Do not include markdown formatting like ```json.
+        """
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt)
+        ])
+        
+        # Use simple StrOutputParser and manual JSON parsing for robustness, 
+        # or JsonOutputParser if available. For now, we'll rely on the prompt.
+        chain = prompt | self.llm | StrOutputParser()
+        
+        response = chain.invoke({
+            "resume_text": resume_text,
+            "job_description": job_description
+        })
+        
+        # Clean up potential markdown formatting
+        response = response.replace("```json", "").replace("```", "").strip()
+        
+        import json
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            # Fallback if JSON fails
+            return {
+                "name": "Unknown",
+                "score": 0,
+                "summary": "Error parsing AI response.",
+                "strengths": [],
+                "weaknesses": []
+            }
